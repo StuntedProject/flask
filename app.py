@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ROOT_PATH = 'http://ml.anyastunting.com/'
-ROOT_PATH = 'localhost:6969/'
+ROOT_PATH = 'http://ml.anyastunting.com/'
+# ROOT_PATH = 'localhost:6969/'
 PORT = os.getenv('PORT')
 
 sys.path.append("..")
