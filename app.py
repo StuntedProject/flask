@@ -4,9 +4,13 @@ from werkzeug.utils import secure_filename
 import sys
 import cv2
 import numpy as np
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ROOT_PATH = 'http://ml.anyastunting.com/'
 ROOT_PATH = 'localhost:6969/'
+PORT = os.getenv('PORT')
 
 sys.path.append("..")
 app = Flask(__name__)
@@ -158,4 +162,4 @@ def create_app():
    return app
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=6969)
+    app.run(debug=False, host='0.0.0.0', port=PORT)
