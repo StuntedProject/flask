@@ -5,8 +5,8 @@ import sys
 import cv2
 import numpy as np
 
-ROOT_PATH = 'http://ml.anyastunting.com/'
-# ROOT_PATH = 'localhost:6969/'
+# ROOT_PATH = 'http://ml.anyastunting.com/'
+ROOT_PATH = 'localhost:6969/'
 
 sys.path.append("..")
 app = Flask(__name__)
