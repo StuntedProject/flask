@@ -1,6 +1,7 @@
 import os
 from flask import Flask, jsonify, request, send_from_directory
 from werkzeug.utils import secure_filename
+from google.cloud import storage
 import sys
 import cv2
 import numpy as np
@@ -11,6 +12,7 @@ load_dotenv()
 ROOT_PATH = 'http://ml.anyastunting.com/'
 # ROOT_PATH = 'localhost:6969/'
 PORT = os.getenv('PORT')
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './secret/stunted-project-ccd15a48d57a.json'
 
 sys.path.append("..")
 app = Flask(__name__)
@@ -55,6 +57,12 @@ def load_images_from_folder(folder):
             images.append(img)
     return images
 
+def upload_file_to_bucket (file, filename, dest): 
+    client = storage.Client()
+    bucket = client.get_bucket('stunted-bucket')
+    blob = bucket.blob(os.path.join(dest, filename))
+    blob.upload_from_file(file, content_type=file.content_type)
+
 # Endpoint 
 @app.route('/')
 def index():
@@ -78,6 +86,9 @@ def predict():
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        
+        # Upload to Google Storage Bucket 
+        upload_file_to_bucket(file, filename, '/stuntingDetection/upload')
 
         # Load Aruco detector
         parameters = cv2.aruco.DetectorParameters_create()
@@ -86,8 +97,13 @@ def predict():
         # Load Object Detector
         detector = HomogeneousBgDetector()
 
-        # Load Image
-        img = cv2.imread('uploads/' + filename)
+        # Load Image From Storage Bucket 
+        client = storage.Client()
+        bucket = client.get_bucket('stunted-bucket')
+        blob = bucket.blob('/stuntingDetectian/upload' + filename)
+        file_data = blob.download_as_bytes()
+        nparr = np.frombuffer(file_data, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
         # Get Aruco marker
         corners, _, _ = cv2.aruco.detectMarkers(img, aruco_dict, parameters=parameters)
@@ -132,6 +148,8 @@ def predict():
             
         cv2.imwrite(os.path.join(app.config['OUTPUT_FOLDER'], filename), img)
 
+        upload_file_to_bucket(os.path.join(app.config['OUTPUT_FOLDER'], filename), filename='Result-'+filename, dest='/stuntingDetection/result')
+
         detected_height = {height_list, width_list}
         json = {
             # 'label': label.replace('_', ' '),
@@ -142,9 +160,9 @@ def predict():
         return jsonify(json)
     else:
         json = {
+            'success': False,
+            'message': 'Tipe file tidak dikenali mohon input ulang gambar anak anda yah!',
             'data': [],
-            'message': 'Please upload JPG, JPEG, or PNG!',
-            'error': "The selected file isn't supported!"
         }
         return jsonify(json)
 
