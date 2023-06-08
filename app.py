@@ -58,10 +58,12 @@ def load_images_from_folder(folder):
     return images
 
 def upload_file_to_bucket (file, filename, dest): 
+    source = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     client = storage.Client()
-    bucket = client.get_bucket('stunted-bucket')
-    blob = bucket.blob(os.path.join(dest, filename))
-    blob.upload_from_file(file, content_type=file.content_type)
+    bucket = client.bucket('stunted-bucket')
+    dest = str(os.path.join(dest, filename))
+    blob = bucket.blob(dest)
+    blob.upload_from_filename(source)
 
 # Endpoint 
 @app.route('/')
@@ -88,7 +90,7 @@ def predict():
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         
         # Upload to Google Storage Bucket 
-        upload_file_to_bucket(file, filename, '/stuntingDetection/upload')
+        upload_file_to_bucket(file, filename, 'stuntingDetection/upload')
 
         # Load Aruco detector
         parameters = cv2.aruco.DetectorParameters_create()
@@ -99,8 +101,8 @@ def predict():
 
         # Load Image From Storage Bucket 
         client = storage.Client()
-        bucket = client.get_bucket('stunted-bucket')
-        blob = bucket.blob('/stuntingDetectian/upload' + filename)
+        bucket = client.bucket('stunted-bucket')
+        blob = bucket.blob('stuntingDetection/upload/' + filename)
         file_data = blob.download_as_bytes()
         nparr = np.frombuffer(file_data, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -148,14 +150,29 @@ def predict():
             
         cv2.imwrite(os.path.join(app.config['OUTPUT_FOLDER'], filename), img)
 
-        upload_file_to_bucket(os.path.join(app.config['OUTPUT_FOLDER'], filename), filename='Result-'+filename, dest='/stuntingDetection/result')
+        # upload_file_to_bucket('./' + os.path.join(app.config['OUTPUT_FOLDER'], filename), filename='Result-'+filename, dest=')
+        dest = str(os.path.join('stuntingDetection/result', 'Result-' + filename))
+        blob = bucket.blob(dest)
+        blob.upload_from_filename('./' + os.path.join(app.config['OUTPUT_FOLDER'], filename))
 
-        detected_height = {height_list, width_list}
+        publicUrl = 'https://storage.googleapis.com/stunted-bucket/' + dest
+
+        # max_values = np.maximum(height_list, width_list)
+        # print(max_values)
+        idx = np.argmax(height_list)
+        print(np.argmax(height_list))
+        # detected_height = {height_list, width_list}
         json = {
             # 'label': label.replace('_', ' '),
             # 'image_url': 'http://127.0.0.1:6969/result/' + filename
-            'image_url': ROOT_PATH + '/result/' + filename,
-            'detected_list' : detected_height
+            'success': True,
+            'message': 'Ini yah data tinggi anak kamu, semoga tidak stunting',
+            'data' : {
+                'image_url': publicUrl,
+                'listHeight': height_list,
+                'listWidth': width_list,
+                'tinggiBadan': height_list[idx],
+            },
         }
         return jsonify(json)
     else:
